@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Ventas (API Flask)</title>
+    <!-- Carga de Tailwind CSS para estilos rápidos -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Fuente Inter para mejor legibilidad */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen">
+
+    <!-- Encabezado y Título Principal -->
+    <header class="text-center mb-8">
+        <h1 class="text-4xl font-extrabold text-blue-800">Módulo de Ventas</h1>
+        <p class="text-gray-600 mt-2">Interfaz para la API REST de Flask (CRUD)</p>
+    </header>
+
+    <main class="max-w-6xl mx-auto space-y-8">
+        
+        <!-- Formulario para Agregar Nueva Venta (CREATE) -->
+        <div id="form-container" class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+            <h2 class="text-2xl font-semibold mb-4 text-blue-700">Agregar Nueva Venta</h2>
+            <form id="form-agregar-venta" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                
+                <input type="text" id="clienteNombre" placeholder="Nombre del Cliente" required 
+                       class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                
+                <input type="number" id="totalVenta" placeholder="Total de Venta (ej: 150.00)" step="0.01" required 
+                       class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                
+                <input type="date" id="fechaVenta" required 
+                       class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                
+                <select id="estado" required 
+                        class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="" disabled selected>Seleccione Estado</option>
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="Entregado">Entregado</option>
+                    <option value="Completada">Completada</option>
+                    <option value="Cancelada">Cancelada</option>
+                </select>
+
+                <button type="submit" 
+                        class="col-span-1 md:col-span-2 bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-200 shadow-md">
+                    Registrar Venta
+                </button>
+            </form>
+            <div id="mensaje-form" class="mt-3 text-center font-medium"></div>
+        </div>
+
+        <!-- Sección de Listado de Ventas (READ All) -->
+        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+            <h2 class="text-2xl font-semibold mb-4 text-blue-700">Listado de Ventas</h2>
+            
+            <div id="listado-ventas" class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-body" class="bg-white divide-y divide-gray-200">
+                        <!-- Las ventas se inyectarán aquí por JavaScript -->
+                        <tr><td colspan="6" class="p-4 text-center text-gray-500">Cargando ventas...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="alerta-listado" class="mt-4 hidden p-3 bg-yellow-100 text-yellow-700 rounded-lg"></div>
+        </div>
+
+    </main>
+
+    <script>
+        // URL base de la API de Flask
+        const API_URL = 'http://127.0.0.1:5000/api/v1/ventas';
+
+        // Elementos del DOM
+        const formAgregarVenta = document.getElementById('form-agregar-venta');
+        const tablaBody = document.getElementById('tabla-body');
+        const mensajeForm = document.getElementById('mensaje-form');
+        const alertaListado = document.getElementById('alerta-listado');
+
+        // Función auxiliar para mostrar mensajes
+        function mostrarMensaje(elemento, mensaje, esError = false) {
+            elemento.textContent = mensaje;
+            elemento.className = 'mt-3 text-center font-medium p-2 rounded-lg';
+            if (esError) {
+                elemento.classList.add('bg-red-100', 'text-red-700');
+            } else {
+                elemento.classList.add('bg-green-100', 'text-green-700');
+            }
+            // Ocultar mensaje después de 3 segundos
+            setTimeout(() => {
+                elemento.textContent = '';
+                elemento.classList.add('hidden');
+            }, 3000);
+        }
+
+        // --- 1. READ (GET All) - Función de Listado ---
+        async function cargarVentas() {
+            tablaBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-500">Cargando ventas...</td></tr>';
+            alertaListado.classList.add('hidden');
+
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) {
+                    throw new Error(`Error en la API: ${response.status}`);
+                }
+                const ventas = await response.json();
+                
+                renderizarVentas(ventas);
+
+            } catch (error) {
+                console.error('Error al cargar las ventas:', error);
+                alertaListado.textContent = `Error al conectar con la API de Flask: ${error.message}. Asegúrate de que el servidor esté corriendo en el puerto 5000.`;
+                alertaListado.classList.remove('hidden');
+                tablaBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-red-500">No se pudieron cargar los datos.</td></tr>';
+            }
+        }
+
+        function renderizarVentas(ventas) {
+            if (ventas.length === 0) {
+                tablaBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-500">No hay ventas registradas.</td></tr>';
+                return;
+            }
+
+            tablaBody.innerHTML = '';
+            ventas.forEach(venta => {
+                const fila = document.createElement('tr');
+                fila.className = 'hover:bg-gray-100 transition duration-150';
+
+                // Función para determinar el estilo del estado
+                let estadoClass = '';
+                if (venta.estado === 'Completada') {
+                    estadoClass = 'bg-green-100 text-green-800';
+                } else if (venta.estado === 'Pendiente') {
+                    estadoClass = 'bg-yellow-100 text-yellow-800';
+                } else if (venta.estado === 'Cancelada') {
+                    estadoClass = 'bg-red-100 text-red-800';
+                } else {
+                     estadoClass = 'bg-blue-100 text-blue-800';
+                }
+
+
+                fila.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${venta.id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${venta.clienteNombre}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">$${venta.totalVenta.toFixed(2)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${venta.fechaVenta}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${estadoClass}">
+                            ${venta.estado}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button onclick="eliminarVenta(${venta.id})" 
+                                class="text-red-600 hover:text-red-900 transition duration-150 p-2 rounded-lg bg-red-50 hover:bg-red-100">
+                            Eliminar
+                        </button>
+                    </td>
+                `;
+                tablaBody.appendChild(fila);
+            });
+        }
+
+
+        // --- 2. CREATE (POST) - Manejo del Formulario ---
+        formAgregarVenta.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const nuevaVenta = {
+                clienteNombre: document.getElementById('clienteNombre').value,
+                totalVenta: parseFloat(document.getElementById('totalVenta').value),
+                fechaVenta: document.getElementById('fechaVenta').value,
+                estado: document.getElementById('estado').value
+            };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(nuevaVenta)
+                });
+
+                const resultado = await response.json();
+
+                if (response.status === 201) {
+                    mostrarMensaje(mensajeForm, `Venta #${resultado.id} creada exitosamente.`, false);
+                    formAgregarVenta.reset(); // Limpiar formulario
+                    cargarVentas(); // Recargar la lista
+                } else {
+                    // Manejo de error 400 (Faltan campos, formato inválido, etc.)
+                    mostrarMensaje(mensajeForm, `Error al crear: ${resultado.error || 'Respuesta inesperada de la API'}`, true);
+                }
+
+            } catch (error) {
+                console.error('Error en el POST:', error);
+                mostrarMensaje(mensajeForm, 'Error de conexión con el servidor de Flask.', true);
+            }
+        });
+
+
+        // --- 3. DELETE (DELETE) - Función de Eliminación ---
+        async function eliminarVenta(id) {
+            // Reemplazo de window.confirm() con un manejo de error impreso
+            console.warn(`Intento de eliminar venta con ID: ${id}.`);
+            
+            // Simulación de confirmación (en un entorno real usarías un modal)
+            if (!confirm(`¿Estás seguro de que quieres eliminar la venta con ID ${id}?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.status === 204) {
+                    mostrarMensaje(mensajeForm, `Venta #${id} eliminada exitosamente.`, false);
+                    cargarVentas(); // Recargar la lista
+                } else if (response.status === 404) {
+                    mostrarMensaje(mensajeForm, `Error: Venta con ID ${id} no encontrada.`, true);
+                } else {
+                    const resultado = await response.json();
+                    mostrarMensaje(mensajeForm, `Error al eliminar: ${resultado.error || response.status}`, true);
+                }
+
+            } catch (error) {
+                console.error('Error al eliminar:', error);
+                mostrarMensaje(mensajeForm, 'Error de conexión con el servidor de Flask.', true);
+            }
+        }
+        
+        // Asignar la función al ámbito global para que funcione en los botones de la tabla
+        window.eliminarVenta = eliminarVenta;
+
+
+        // Cargar las ventas al iniciar la aplicación
+        document.addEventListener('DOMContentLoaded', cargarVentas);
+    </script>
+</body>
+</html>

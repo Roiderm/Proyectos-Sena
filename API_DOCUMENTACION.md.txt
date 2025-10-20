@@ -1,0 +1,69 @@
+Documentación API REST: Módulo de Ventas
+Esta API REST fue desarrollada usando Flask, Flask-SQLAlchemy y Python para gestionar las ventas de un sistema. Se conecta a una base de datos MySQL (modulo_ventas_db).
+Estructura del Recurso: Venta
+El recurso principal gestionado es Venta, con los siguientes campos:
+Campo	Tipo	Requerido	Descripción
+id	Integer	Sí	Identificador único de la venta (clave primaria).
+clienteNombre	String	Sí	Nombre del cliente.
+totalVenta	Float	Sí	Monto total de la transacción.
+fechaVenta	String	Sí	Fecha de la venta en formato ISO 8601 (YYYY-MM-DD).
+estado	String	Sí	Estado actual de la venta (e.g., "Pendiente", "Completada").
+Endpoints (CRUD)
+La URL base para todos los endpoints es: http://127.0.0.1:5000/api/v1/ventas
+1. Obtener todas las Ventas (READ All)
+Permite listar todas las ventas registradas.
+Atributo	Valor
+Método	GET
+URL	/api/v1/ventas
+Body (Request)	N/A
+Respuesta Exitosa	200 OK
+Ejemplo de Respuesta (JSON Array):
+[
+  {
+    "id": 1,
+    "clienteNombre": "Manuel Gómez",
+    "totalVenta": 125.99,
+    "fechaVenta": "2025-10-21",
+    "estado": "Entregado"
+  }
+]
+2. Crear una Nueva Venta (CREATE)
+Permite registrar una nueva venta en la base de datos.
+Atributo	Valor
+Método	POST
+URL	/api/v1/ventas
+Body (Request)	JSON con campos requeridos.
+Respuesta Exitosa	201 CREATED
+Ejemplo de Petición (JSON Body):
+{
+    "clienteNombre": "Luisa Fernanda",
+    "totalVenta": 350.50,
+    "fechaVenta": "2025-11-01", 
+    "estado": "Pendiente"
+}
+3. Obtener Venta por ID (READ One)
+Permite consultar los detalles de una venta específica.
+Atributo	Valor
+Método	GET
+URL	/api/v1/ventas/{id}
+Respuesta Exitosa	200 OK
+Respuesta Error	404 NOT FOUND (Si el ID no existe)
+4. Actualizar una Venta (UPDATE)
+Permite modificar uno o más campos de una venta existente.
+Atributo	Valor
+Método	PUT
+URL	/api/v1/ventas/{id}
+Body (Request)	JSON con los campos a actualizar (parcial o completo).
+Respuesta Exitosa	200 OK
+Ejemplo de Petición (Actualizar solo estado):
+{
+    "estado": "Completada"
+}
+5. Eliminar una Venta (DELETE)
+Permite eliminar un registro de venta.
+Atributo	Valor
+Método	DELETE
+URL	/api/v1/ventas/{id}
+Respuesta Exitosa	204 NO CONTENT
+Respuesta Error	404 NOT FOUND
+
